@@ -47,4 +47,3 @@ streamlit run app.py
   - no predictions available before screening/shortlisting,
   - invalid/failed composition featurization.
 - Reusable logic is factored into `tbc_helpers.py`.
-- Performance optimizations include Streamlit/resource/data caching for model loading, featurizer construction, featurization reuse, and cached prediction outputs.
