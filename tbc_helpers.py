@@ -3,21 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable
 
-try:
-    import streamlit as st
-except Exception:  # noqa: BLE001
-    st = None
-
-
-def _identity_cache(func=None, **_kwargs):
-    if func is None:
-        return lambda f: f
-    return func
-
-
-cache_resource = st.cache_resource if st is not None else _identity_cache
-cache_data = st.cache_data if st is not None else _identity_cache
-
 import joblib
 import numpy as np
 import pandas as pd
@@ -83,37 +68,26 @@ def _load_artifacts(model_dir: str | Path, required_files: Iterable[str]):
 
 
 def load_kappa_artifacts(model_dir: str | Path):
-    artifacts = _load_artifacts(model_dir, REQUIRED_KAPPA_ARTIFACTS)
-    # Use all CPU cores for RF inference when available.
-    model = artifacts.get("rf_model.joblib")
-    if hasattr(model, "n_jobs"):
-        model.n_jobs = -1
-    return artifacts
+    return _load_artifacts(model_dir, REQUIRED_KAPPA_ARTIFACTS)
 
 
 def load_cte_artifacts(model_dir: str | Path):
     return _load_artifacts(model_dir, REQUIRED_CTE_ARTIFACTS)
 
 
-@cache_resource(show_spinner=False)
 def _build_featurizer() -> MultipleFeaturizer:
-    featurizer = MultipleFeaturizer([
+    return MultipleFeaturizer([
         ElementProperty.from_preset("magpie"),
         Stoichiometry(),
     ])
-    if hasattr(featurizer, "set_n_jobs"):
-        featurizer.set_n_jobs(-1)
-    return featurizer
 
 
-@cache_data(show_spinner=False, max_entries=128)
-def _featurize_cached(compositions_key: tuple[str, ...]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Featurize a composition tuple once and reuse results across kappa/CTE calls."""
+def _featurize(compositions: list[str], expected_feature_cols: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
     featurizer = _build_featurizer()
-    valid_rows: list[dict] = []
-    failed_rows: list[dict] = []
+    valid_rows = []
+    failed_rows = []
 
-    for formula in compositions_key:
+    for formula in compositions:
         try:
             valid_rows.append({"Composition": formula, "composition_obj": Composition(formula)})
         except Exception as exc:  # noqa: BLE001
@@ -123,35 +97,35 @@ def _featurize_cached(compositions_key: tuple[str, ...]) -> tuple[pd.DataFrame, 
         raise ValueError("All provided compositions failed to parse.")
 
     df = pd.DataFrame(valid_rows)
-    comp_objs = df["composition_obj"].tolist()
-    formulas = df["Composition"].tolist()
+    feat_df = featurizer.featurize_dataframe(
+        df,
+        col_id="composition_obj",
+        ignore_errors=True,
+        return_errors=True,
+        inplace=False,
+    )
 
-    feature_values = featurizer.featurize_many(comp_objs, ignore_errors=True, pbar=False)
-    feature_labels = featurizer.feature_labels()
-    feat_df = pd.DataFrame(feature_values, columns=feature_labels)
-    feat_df.insert(0, "Composition", formulas)
+    if "MultipleFeaturizer Exceptions" in feat_df.columns:
+        err_mask = feat_df["MultipleFeaturizer Exceptions"].notna()
+        if err_mask.any():
+            failed_rows.extend(
+                {
+                    "Composition": row["Composition"],
+                    "error": f"Featurization failed: {row['MultipleFeaturizer Exceptions']}",
+                }
+                for _, row in feat_df.loc[err_mask, ["Composition", "MultipleFeaturizer Exceptions"]].iterrows()
+            )
+        feat_df = feat_df.loc[~err_mask].copy()
 
-    # Drop rows where featurization returned all-NaN descriptor values.
-    feature_only = feat_df.drop(columns=["Composition"], errors="ignore")
-    bad_mask = feature_only.isna().all(axis=1)
-    if bad_mask.any():
-        bad_formulas = feat_df.loc[bad_mask, "Composition"].tolist()
-        failed_rows.extend({"Composition": f, "error": "Featurization failed."} for f in bad_formulas)
-        feat_df = feat_df.loc[~bad_mask].reset_index(drop=True)
-
-    failed_df = pd.DataFrame(failed_rows)
-    return feat_df, failed_df
-
-
-def _featurize(compositions: list[str], expected_feature_cols: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    feat_df, failed_df = _featurize_cached(tuple(compositions))
     missing = [col for col in expected_feature_cols if col not in feat_df.columns]
     if missing:
         raise ValueError(
             "Generated features are missing model-required columns. "
             f"Examples: {missing[:10]}"
         )
+
     kept = feat_df[["Composition"] + expected_feature_cols].copy()
+    failed_df = pd.DataFrame(failed_rows)
     return kept, failed_df
 
 

@@ -39,11 +39,6 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-## Speed modes
-
-- **Full accuracy**: 100 to 2000 K, step 100 (20 points/composition).
-- **Fast interactive**: 300 to 1900 K, step 200 (9 points/composition) for faster iteration.
-
 ## Notes
 
 - The app includes robust validation/error handling for:
@@ -52,4 +47,3 @@ streamlit run app.py
   - no predictions available before screening/shortlisting,
   - invalid/failed composition featurization.
 - Reusable logic is factored into `tbc_helpers.py`.
-- Performance optimizations include Streamlit/resource/data caching for model loading, featurizer construction, featurization reuse, and cached prediction outputs, plus multi-core featurization/inference where supported.
