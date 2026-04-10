@@ -17,17 +17,6 @@ from tbc_helpers import (
 )
 
 st.set_page_config(page_title="Materials Screening Copilot for TBCs", layout="wide")
-
-@st.cache_resource(show_spinner=False)
-def _cached_kappa_artifacts(model_dir: str):
-    return load_kappa_artifacts(model_dir)
-
-
-@st.cache_resource(show_spinner=False)
-def _cached_cte_artifacts(model_dir: str):
-    return load_cte_artifacts(model_dir)
-
-
 st.title("Materials Screening Copilot for TBCs")
 st.caption("Predict kappa/CTE, screen candidates, and build a final shortlist.")
 
@@ -39,8 +28,6 @@ if "cte_predictions" not in st.session_state:
     st.session_state.cte_predictions = None
 if "failed_compositions" not in st.session_state:
     st.session_state.failed_compositions = None
-if "plot_compositions" not in st.session_state:
-    st.session_state.plot_compositions = []
 
 with st.sidebar:
     st.header("Model Artifact Paths")
@@ -73,9 +60,8 @@ with tab1:
     if st.button("Run kappa prediction"):
         try:
             compositions = parse_compositions_from_sources(uploaded_comp_df, typed_comp)
-            artifacts = _cached_kappa_artifacts(kappa_model_dir)
-            with st.spinner("Running kappa featurization + prediction..."):
-                pred_df, failed_df = predict_kappa(compositions, artifacts, tmin=100, tmax=2000, step=100)
+            artifacts = load_kappa_artifacts(kappa_model_dir)
+            pred_df, failed_df = predict_kappa(compositions, artifacts, tmin=100, tmax=2000, step=100)
 
             st.session_state.kappa_predictions = pred_df
             st.session_state.failed_compositions = failed_df
@@ -108,37 +94,32 @@ with tab2:
 
             ranked_df = rank_lowest_kappa_at_temperature(st.session_state.kappa_predictions, int(target_t), int(top_n))
             st.session_state.kappa_ranked = ranked_df
-            st.session_state.plot_compositions = ranked_df["Composition"].head(min(5, len(ranked_df))).tolist()
 
             st.dataframe(ranked_df, use_container_width=True)
             _download_df("Download ranked kappa CSV", ranked_df, f"screened_kappa_{int(target_t)}K.csv")
+
+            selected = st.multiselect(
+                "Select compositions to plot kappa vs T",
+                options=ranked_df["Composition"].tolist(),
+                default=ranked_df["Composition"].head(min(5, len(ranked_df))).tolist(),
+            )
+            if selected:
+                plot_df = st.session_state.kappa_predictions[
+                    st.session_state.kappa_predictions["Composition"].isin(selected)
+                ]
+                fig = px.line(
+                    plot_df,
+                    x="T",
+                    y="kappa_pred",
+                    color="Composition",
+                    markers=True,
+                    title="kappa vs Temperature",
+                )
+                st.plotly_chart(fig, use_container_width=True)
         except ValueError as exc:
             st.error(str(exc))
         except Exception as exc:  # noqa: BLE001
             st.exception(exc)
-
-    if st.session_state.kappa_ranked is not None:
-        plot_options = st.session_state.kappa_ranked["Composition"].tolist()
-        selected = st.multiselect(
-            "Select compositions to plot kappa vs T",
-            options=plot_options,
-            default=[c for c in st.session_state.plot_compositions if c in plot_options],
-            key="kappa_plot_select",
-        )
-        st.session_state.plot_compositions = selected
-        if selected:
-            plot_df = st.session_state.kappa_predictions[
-                st.session_state.kappa_predictions["Composition"].isin(selected)
-            ]
-            fig = px.line(
-                plot_df,
-                x="T",
-                y="kappa_pred",
-                color="Composition",
-                markers=True,
-                title="kappa vs Temperature",
-            )
-            st.plotly_chart(fig, use_container_width=True)
 
 with tab3:
     st.subheader("Check CTE")
@@ -163,9 +144,8 @@ with tab3:
         if st.button("Run CTE prediction"):
             try:
                 compositions = parse_compositions_from_sources(uploaded_comp_df, typed_comp)
-                artifacts = _cached_cte_artifacts(cte_model_dir)
-                with st.spinner("Running CTE featurization + prediction..."):
-                    cte_df, failed_df = predict_cte(compositions, artifacts, tmin=100, tmax=2000, step=100)
+                artifacts = load_cte_artifacts(cte_model_dir)
+                cte_df, failed_df = predict_cte(compositions, artifacts, tmin=100, tmax=2000, step=100)
                 st.session_state.cte_predictions = cte_df
 
                 st.success(f"Generated {len(cte_df)} CTE prediction rows for {cte_df['Composition'].nunique()} compositions.")

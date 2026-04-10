@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
 
@@ -76,7 +75,6 @@ def load_cte_artifacts(model_dir: str | Path):
     return _load_artifacts(model_dir, REQUIRED_CTE_ARTIFACTS)
 
 
-@lru_cache(maxsize=1)
 def _build_featurizer() -> MultipleFeaturizer:
     return MultipleFeaturizer([
         ElementProperty.from_preset("magpie"),
@@ -84,14 +82,12 @@ def _build_featurizer() -> MultipleFeaturizer:
     ])
 
 
-@lru_cache(maxsize=64)
-def _featurize_cached(compositions_key: tuple[str, ...]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Featurize a composition tuple once and reuse results across kappa/CTE calls."""
+def _featurize(compositions: list[str], expected_feature_cols: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
     featurizer = _build_featurizer()
-    valid_rows: list[dict] = []
-    failed_rows: list[dict] = []
+    valid_rows = []
+    failed_rows = []
 
-    for formula in compositions_key:
+    for formula in compositions:
         try:
             valid_rows.append({"Composition": formula, "composition_obj": Composition(formula)})
         except Exception as exc:  # noqa: BLE001
@@ -121,21 +117,15 @@ def _featurize_cached(compositions_key: tuple[str, ...]) -> tuple[pd.DataFrame, 
             )
         feat_df = feat_df.loc[~err_mask].copy()
 
-    dropped_cols = ["composition_obj", "MultipleFeaturizer Exceptions"]
-    feat_df = feat_df.drop(columns=[c for c in dropped_cols if c in feat_df.columns], errors="ignore")
-    failed_df = pd.DataFrame(failed_rows)
-    return feat_df, failed_df
-
-
-def _featurize(compositions: list[str], expected_feature_cols: list[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    feat_df, failed_df = _featurize_cached(tuple(compositions))
     missing = [col for col in expected_feature_cols if col not in feat_df.columns]
     if missing:
         raise ValueError(
             "Generated features are missing model-required columns. "
             f"Examples: {missing[:10]}"
         )
+
     kept = feat_df[["Composition"] + expected_feature_cols].copy()
+    failed_df = pd.DataFrame(failed_rows)
     return kept, failed_df
 
 
