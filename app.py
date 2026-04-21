@@ -16,8 +16,8 @@ from tbc_helpers import (
     rank_lowest_kappa_at_temperature,
 )
 
-st.set_page_config(page_title="Materials Screening Copilot for TBCs", layout="wide")
-st.title("Materials Screening Copilot for TBCs")
+st.set_page_config(page_title="Materials Screening Copilot for TEBCs", layout="wide")
+st.title("Materials Screening Copilot for TEBCs")
 st.caption("Predict kappa/CTE, screen candidates, and build a final shortlist.")
 
 if "kappa_predictions" not in st.session_state:
@@ -166,7 +166,14 @@ with tab3:
 
 with tab4:
     st.subheader("Final shortlist (kappa + CTE)")
-    cte_threshold = st.number_input("Maximum acceptable CTE", value=10.0, step=0.1)
+    cte_mode = st.radio(
+        "CTE shortlist mode",
+        ["EBC", "TBC"],
+        horizontal=True,
+        help="EBC applies a maximum acceptable CTE. TBC applies a minimum acceptable CTE.",
+    )
+    cte_threshold_label = "Maximum acceptable CTE" if cte_mode == "EBC" else "Minimum acceptable CTE"
+    cte_threshold = st.number_input(cte_threshold_label, value=10.0, step=0.1)
 
     if st.button("Build final shortlist"):
         try:
@@ -179,10 +186,11 @@ with tab4:
                 st.session_state.kappa_ranked,
                 st.session_state.cte_predictions,
                 float(cte_threshold),
+                cte_mode,
             )
 
             if shortlist_df.empty:
-                st.warning("No candidates met the CTE threshold after merging by Composition and T.")
+                st.warning(f"No candidates met the {cte_mode} CTE threshold after merging by Composition and T.")
             else:
                 st.success(f"Final shortlist contains {len(shortlist_df)} candidates.")
                 st.dataframe(shortlist_df, use_container_width=True)
