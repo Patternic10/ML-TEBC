@@ -16,8 +16,8 @@ from tbc_helpers import (
     rank_lowest_kappa_at_temperature,
 )
 
-st.set_page_config(page_title="Materials Screening Copilot for TBCs", layout="wide")
-st.title("Materials Screening Copilot for TBCs")
+st.set_page_config(page_title="Materials Screening Copilot for TEBCs", layout="wide")
+st.title("Materials Screening Copilot for TEBCs")
 st.caption("Predict kappa/CTE, screen candidates, and build a final shortlist.")
 
 if "kappa_predictions" not in st.session_state:

@@ -2,7 +2,7 @@
 
 Machine learning workflows for Thermal and Environmental Barrier Coatings, now with a Streamlit interface:
 
-## Materials Screening Copilot for TBCs
+## Materials Screening Copilot for TEBCs
 
 This app provides an end-to-end workflow with four tabs:
 
