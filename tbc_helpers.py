@@ -221,7 +221,12 @@ def coerce_cte_input(uploaded_cte_df: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def build_final_shortlist(kappa_ranked: pd.DataFrame, cte_df: pd.DataFrame, cte_threshold: float) -> pd.DataFrame:
+def build_final_shortlist(
+    kappa_ranked: pd.DataFrame,
+    cte_df: pd.DataFrame,
+    cte_threshold: float,
+    cte_mode: str = "EBC",
+) -> pd.DataFrame:
     required_kappa = {"Composition", "T", "kappa_pred"}
     required_cte = {"Composition", "T", "cte_pred"}
 
@@ -237,7 +242,14 @@ def build_final_shortlist(kappa_ranked: pd.DataFrame, cte_df: pd.DataFrame, cte_
         how="inner",
     )
 
-    merged = merged[merged["cte_pred"] <= cte_threshold].copy()
+    normalized_mode = cte_mode.strip().upper()
+    if normalized_mode == "EBC":
+        merged = merged[merged["cte_pred"] <= cte_threshold].copy()
+    elif normalized_mode == "TBC":
+        merged = merged[merged["cte_pred"] >= cte_threshold].copy()
+    else:
+        raise ValueError("CTE mode must be either 'EBC' (max threshold) or 'TBC' (min threshold).")
+
     merged = merged.sort_values(["kappa_pred", "cte_pred"], ascending=[True, True]).reset_index(drop=True)
     merged.insert(0, "Final_Rank", np.arange(1, len(merged) + 1))
     return merged

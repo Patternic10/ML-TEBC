@@ -29,7 +29,9 @@ This app provides an end-to-end workflow with four tabs:
 
 4. **Final shortlist**
    - Merges kappa-screened candidates with CTE results on `Composition` and `T`.
-   - Filters by a user-defined maximum acceptable CTE threshold.
+   - Supports mode-based filtering:
+     - `EBC`: keep candidates at or below a user-defined maximum acceptable CTE.
+     - `TBC`: keep candidates at or above a user-defined minimum acceptable CTE.
    - Supports CSV download of final shortlist.
 
 ## Run locally
