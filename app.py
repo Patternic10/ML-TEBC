@@ -57,11 +57,39 @@ tab1, tab2, tab3, tab4 = st.tabs(["Predict kappa", "Screen kappa", "Check CTE", 
 
 with tab1:
     st.subheader("Predict kappa from 100 K to 2000 K")
+    kappa_temp_mode = st.radio(
+        "Kappa prediction temperature mode",
+        ["Full range (100–2000 K, step 100 K)", "Single temperature"],
+        horizontal=True,
+    )
+    if kappa_temp_mode == "Single temperature":
+        kappa_single_t = st.number_input(
+            "Single kappa prediction temperature (K)",
+            min_value=100,
+            max_value=2000,
+            value=1500,
+            step=100,
+            key="kappa_single_t",
+        )
+        kappa_tmin = int(kappa_single_t)
+        kappa_tmax = int(kappa_single_t)
+        kappa_step = 100
+    else:
+        kappa_tmin = 100
+        kappa_tmax = 2000
+        kappa_step = 100
+
     if st.button("Run kappa prediction"):
         try:
             compositions = parse_compositions_from_sources(uploaded_comp_df, typed_comp)
             artifacts = load_kappa_artifacts(kappa_model_dir)
-            pred_df, failed_df = predict_kappa(compositions, artifacts, tmin=100, tmax=2000, step=100)
+            pred_df, failed_df = predict_kappa(
+                compositions,
+                artifacts,
+                tmin=kappa_tmin,
+                tmax=kappa_tmax,
+                step=kappa_step,
+            )
 
             st.session_state.kappa_predictions = pred_df
             st.session_state.failed_compositions = failed_df
@@ -141,11 +169,39 @@ with tab3:
             except Exception as exc:  # noqa: BLE001
                 st.exception(exc)
     else:
+        cte_temp_mode = st.radio(
+            "CTE prediction temperature mode",
+            ["Full range (100–2000 K, step 100 K)", "Single temperature"],
+            horizontal=True,
+        )
+        if cte_temp_mode == "Single temperature":
+            cte_single_t = st.number_input(
+                "Single CTE prediction temperature (K)",
+                min_value=100,
+                max_value=2000,
+                value=1500,
+                step=100,
+                key="cte_single_t",
+            )
+            cte_tmin = int(cte_single_t)
+            cte_tmax = int(cte_single_t)
+            cte_step = 100
+        else:
+            cte_tmin = 100
+            cte_tmax = 2000
+            cte_step = 100
+
         if st.button("Run CTE prediction"):
             try:
                 compositions = parse_compositions_from_sources(uploaded_comp_df, typed_comp)
                 artifacts = load_cte_artifacts(cte_model_dir)
-                cte_df, failed_df = predict_cte(compositions, artifacts, tmin=100, tmax=2000, step=100)
+                cte_df, failed_df = predict_cte(
+                    compositions,
+                    artifacts,
+                    tmin=cte_tmin,
+                    tmax=cte_tmax,
+                    step=cte_step,
+                )
                 st.session_state.cte_predictions = cte_df
 
                 st.success(f"Generated {len(cte_df)} CTE prediction rows for {cte_df['Composition'].nunique()} compositions.")
