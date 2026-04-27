@@ -250,6 +250,9 @@ def build_final_shortlist(
     else:
         raise ValueError("CTE mode must be either 'EBC' (max threshold) or 'TBC' (min threshold).")
 
-    merged = merged.sort_values(["kappa_pred", "cte_pred"], ascending=[True, True]).reset_index(drop=True)
+    # Simple and transparent scoring:
+    # lower kappa is always better, so Screening_Score is set to kappa_pred.
+    merged["Screening_Score"] = merged["kappa_pred"]
+    merged = merged.sort_values(["Screening_Score", "cte_pred"], ascending=[True, True]).reset_index(drop=True)
     merged.insert(0, "Final_Rank", np.arange(1, len(merged) + 1))
     return merged
