@@ -61,14 +61,3 @@ During prediction/screening, models are **loaded and used directly**; they are *
 pip install -r requirements.txt
 streamlit run app.py
 ```
-
-## Deployment compatibility note
-
-The saved sklearn artifacts were serialized with scikit-learn 1.4.x internals.  
-For deployment, use:
-- `scikit-learn==1.4.2` (already pinned in `requirements.txt`)
-- `numpy<2.0` (already pinned in `requirements.txt` for sklearn 1.4.x compatibility)
-- Python 3.11 (set in `runtime.txt`)
-
-This avoids deserialization errors such as:
-`AttributeError: ... __pyx_unpickle_CyHalfSquaredError`.
