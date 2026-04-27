@@ -64,7 +64,24 @@ def _load_artifacts(model_dir: str | Path, required_files: Iterable[str]):
     if missing:
         missing_str = ", ".join(missing)
         raise ArtifactError(f"Missing artifact(s) in '{model_dir}': {missing_str}")
-    return {name: joblib.load(model_dir / name) for name in required_files}
+
+    loaded = {}
+    for name in required_files:
+        artifact_path = model_dir / name
+        try:
+            loaded[name] = joblib.load(artifact_path)
+        except AttributeError as exc:
+            exc_msg = str(exc)
+            if "__pyx_unpickle_CyHalfSquaredError" in exc_msg:
+                raise ArtifactError(
+                    "Model artifact deserialization failed due to a scikit-learn/runtime mismatch. "
+                    "Use the same major/minor Python and scikit-learn versions that were used during training "
+                    "(for this app, pin Python 3.11 and scikit-learn==1.4.2), then redeploy."
+                ) from exc
+            raise ArtifactError(f"Failed to load artifact '{artifact_path}': {exc}") from exc
+        except Exception as exc:  # noqa: BLE001
+            raise ArtifactError(f"Failed to load artifact '{artifact_path}': {exc}") from exc
+    return loaded
 
 
 def load_kappa_artifacts(model_dir: str | Path):
