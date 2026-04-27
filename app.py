@@ -20,6 +20,17 @@ st.set_page_config(page_title="Materials Screening Copilot for TEBCs", layout="w
 st.title("Materials Screening Copilot for TEBCs")
 st.caption("Predict kappa/CTE, screen candidates, and build a final shortlist.")
 
+
+@st.cache_resource(show_spinner=False)
+def _cached_load_kappa_artifacts(model_dir: str):
+    return load_kappa_artifacts(model_dir)
+
+
+@st.cache_resource(show_spinner=False)
+def _cached_load_cte_artifacts(model_dir: str):
+    return load_cte_artifacts(model_dir)
+
+
 if "kappa_predictions" not in st.session_state:
     st.session_state.kappa_predictions = None
 if "kappa_ranked" not in st.session_state:
@@ -30,18 +41,61 @@ if "failed_compositions" not in st.session_state:
     st.session_state.failed_compositions = None
 
 with st.sidebar:
+    st.header("About this app")
+    st.markdown(
+        """
+This app predicts thermal conductivity (**kappa**) and thermal expansion (**CTE**) for phosphate-based candidate materials,
+then combines both signals to shortlist candidates for thermal/environmental barrier coating design.
+
+Why it matters: TEBC materials must balance low thermal conductivity with suitable thermal expansion to improve durability
+under high-temperature service conditions.
+
+Built for the Handshake/OpenAI Codex Creator Challenge: Codex was used to help refactor the workflow into reusable helper
+functions, strengthen validation, and streamline the screening UI.
+"""
+    )
+
     st.header("Model Artifact Paths")
     kappa_model_dir = st.text_input("Kappa model directory", value="Prod_Kappa/kappa_rf_models")
     cte_model_dir = st.text_input("CTE model directory", value="Prod_CTE/gbr_model")
 
     st.header("Input Compositions")
+    sample_input_df = pd.DataFrame(
+        {
+            "Composition": [
+                "Sc0.2Lu0.2Yb0.2Y0.2Gd0.2PO4",
+                "Lu0.5Ho0.5PO4",
+                "La0.2Sm0.2Gd0.2Dy0.2Nd0.2PO4",
+            ]
+        }
+    )
+    st.download_button(
+        label="Download sample input CSV",
+        data=sample_input_df.to_csv(index=False),
+        file_name="sample_compositions.csv",
+        mime="text/csv",
+        help="Use this template to upload compositions for prediction.",
+    )
     uploaded_comp_file = st.file_uploader("Upload CSV with Composition column", type=["csv"])
     typed_comp = st.text_input("Or type single composition", placeholder="e.g., Lu0.25Y0.25Er0.25Yb0.25PO4")
 
     uploaded_comp_df = None
     if uploaded_comp_file is not None:
-        uploaded_comp_df = pd.read_csv(uploaded_comp_file)
-        st.write(f"Loaded {len(uploaded_comp_df)} rows from uploaded composition CSV.")
+        try:
+            uploaded_comp_df = pd.read_csv(uploaded_comp_file)
+            if "Composition" not in uploaded_comp_df.columns:
+                st.error(
+                    "Uploaded composition CSV is missing the required 'Composition' column. "
+                    "Please upload a file with a 'Composition' header."
+                )
+                uploaded_comp_df = None
+            else:
+                st.write(f"Loaded {len(uploaded_comp_df)} rows from uploaded composition CSV.")
+        except Exception as exc:  # noqa: BLE001
+            st.error(f"Unable to read uploaded composition CSV: {exc}")
+
+    st.divider()
+    st.caption("Built with Codex (GPT-5.3-Codex) for rapid ML app development and refactoring.")
 
 
 def _download_df(label: str, df: pd.DataFrame, file_name: str):
@@ -82,7 +136,7 @@ with tab1:
     if st.button("Run kappa prediction"):
         try:
             compositions = parse_compositions_from_sources(uploaded_comp_df, typed_comp)
-            artifacts = load_kappa_artifacts(kappa_model_dir)
+            artifacts = _cached_load_kappa_artifacts(kappa_model_dir)
             pred_df, failed_df = predict_kappa(
                 compositions,
                 artifacts,
@@ -101,10 +155,11 @@ with tab1:
             if failed_df is not None and not failed_df.empty:
                 st.warning("Some compositions failed parsing or featurization.")
                 st.dataframe(failed_df, use_container_width=True)
-        except FileNotFoundError as exc:
-            st.error(f"Artifact path error: {exc}")
         except ArtifactError as exc:
-            st.error(str(exc))
+            st.error(
+                "Kappa model artifacts are missing or invalid. "
+                f"Check the directory '{kappa_model_dir}'. Details: {exc}"
+            )
         except ValueError as exc:
             st.error(str(exc))
         except Exception as exc:  # noqa: BLE001
@@ -165,7 +220,11 @@ with tab3:
                 st.dataframe(cte_df.head(30), use_container_width=True)
                 _download_df("Download normalized CTE CSV", cte_df, "cte_predictions_normalized.csv")
             except ValueError as exc:
-                st.error(str(exc))
+                st.error(
+                    "Invalid CTE CSV format. Required columns are 'Composition', 'T', and one of "
+                    "'cte_pred' or 'GBR_Pred'. "
+                    f"Details: {exc}"
+                )
             except Exception as exc:  # noqa: BLE001
                 st.exception(exc)
     else:
@@ -194,7 +253,7 @@ with tab3:
         if st.button("Run CTE prediction"):
             try:
                 compositions = parse_compositions_from_sources(uploaded_comp_df, typed_comp)
-                artifacts = load_cte_artifacts(cte_model_dir)
+                artifacts = _cached_load_cte_artifacts(cte_model_dir)
                 cte_df, failed_df = predict_cte(
                     compositions,
                     artifacts,
@@ -211,10 +270,11 @@ with tab3:
                 if failed_df is not None and not failed_df.empty:
                     st.warning("Some compositions failed in CTE prediction.")
                     st.dataframe(failed_df, use_container_width=True)
-            except FileNotFoundError as exc:
-                st.error(f"Artifact path error: {exc}")
             except ArtifactError as exc:
-                st.error(str(exc))
+                st.error(
+                    "CTE model artifacts are missing or invalid. "
+                    f"Check the directory '{cte_model_dir}'. Details: {exc}"
+                )
             except ValueError as exc:
                 st.error(str(exc))
             except Exception as exc:  # noqa: BLE001
@@ -230,6 +290,10 @@ with tab4:
     )
     cte_threshold_label = "Maximum acceptable CTE" if cte_mode == "EBC" else "Minimum acceptable CTE"
     cte_threshold = st.number_input(cte_threshold_label, value=10.0, step=0.1)
+    st.caption(
+        "Scoring rule: Screening_Score = predicted kappa at the selected screening temperature "
+        "(lower is better). Final list is filtered by CTE threshold, then ranked by Screening_Score."
+    )
 
     if st.button("Build final shortlist"):
         try:
@@ -246,7 +310,10 @@ with tab4:
             )
 
             if shortlist_df.empty:
-                st.warning(f"No candidates met the {cte_mode} CTE threshold after merging by Composition and T.")
+                st.warning(
+                    f"No candidates passed the final {cte_mode} filter at threshold {cte_threshold}. "
+                    "Try relaxing the CTE threshold or screening more candidates in 'Screen kappa'."
+                )
             else:
                 st.success(f"Final shortlist contains {len(shortlist_df)} candidates.")
                 st.dataframe(shortlist_df, use_container_width=True)
