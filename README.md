@@ -22,6 +22,7 @@ This project was iterated and refactored with OpenAI Codex assistance to:
 
 1. **Predict kappa**
    - Accepts `Composition` input via CSV upload and/or typed formula.
+   - Selects between the original and new saved kappa RF model artifacts.
    - Predicts `kappa` over **100 K to 2000 K** (or a single temperature).
 
 2. **Screen kappa**
@@ -50,7 +51,8 @@ A researcher ranks **REPO4 candidate compositions** for EBC/TBC design constrain
 ## Model artifact note
 
 The app uses **saved ML artifacts** from:
-- `Prod_Kappa/kappa_rf_models`
+- `Prod_Kappa/kappa_rf_models` (original kappa RF model)
+- `Prod_Kappa/kappa_rf_new_models` (new kappa RF model)
 - `Prod_CTE/gbr_model`
 
 During prediction/screening, models are **loaded and used directly**; they are **not retrained** in the app.

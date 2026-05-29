@@ -20,6 +20,11 @@ st.set_page_config(page_title="Materials Screening Copilot for TEBCs", layout="w
 st.title("Materials Screening Copilot for TEBCs")
 st.caption("Predict kappa/CTE, screen candidates, and build a final shortlist.")
 
+KAPPA_MODEL_OPTIONS = {
+    "Original kappa RF model": "Prod_Kappa/kappa_rf_models",
+    "New kappa RF model": "Prod_Kappa/kappa_rf_new_models",
+}
+
 
 @st.cache_resource(show_spinner=False)
 def _cached_load_kappa_artifacts(model_dir: str):
@@ -39,6 +44,8 @@ if "cte_predictions" not in st.session_state:
     st.session_state.cte_predictions = None
 if "failed_compositions" not in st.session_state:
     st.session_state.failed_compositions = None
+if "kappa_model_label" not in st.session_state:
+    st.session_state.kappa_model_label = None
 
 with st.sidebar:
     st.header("About this app")
@@ -56,7 +63,13 @@ functions, strengthen validation, and streamline the screening UI.
     )
 
     st.header("Model Artifact Paths")
-    kappa_model_dir = st.text_input("Kappa model directory", value="Prod_Kappa/kappa_rf_models")
+    selected_kappa_model = st.selectbox(
+        "Kappa prediction model",
+        options=list(KAPPA_MODEL_OPTIONS),
+        help="Choose which saved kappa model artifact set to use for prediction.",
+    )
+    kappa_model_dir = KAPPA_MODEL_OPTIONS[selected_kappa_model]
+    st.caption(f"Kappa artifacts: `{kappa_model_dir}`")
     cte_model_dir = st.text_input("CTE model directory", value="Prod_CTE/gbr_model")
 
     st.header("Input Compositions")
@@ -145,10 +158,15 @@ with tab1:
                 step=kappa_step,
             )
 
+            pred_df.insert(2, "Kappa_Model", selected_kappa_model)
             st.session_state.kappa_predictions = pred_df
+            st.session_state.kappa_model_label = selected_kappa_model
             st.session_state.failed_compositions = failed_df
 
-            st.success(f"Generated {len(pred_df)} kappa prediction rows for {pred_df['Composition'].nunique()} compositions.")
+            st.success(
+                f"Generated {len(pred_df)} kappa prediction rows for "
+                f"{pred_df['Composition'].nunique()} compositions with {selected_kappa_model}."
+            )
             st.dataframe(pred_df.head(30), use_container_width=True)
             _download_df("Download kappa predictions CSV", pred_df, "kappa_predictions.csv")
 
@@ -167,6 +185,8 @@ with tab1:
 
 with tab2:
     st.subheader("Screen lowest kappa at a chosen temperature")
+    if st.session_state.kappa_model_label:
+        st.caption(f"Current kappa predictions use: {st.session_state.kappa_model_label}")
     target_t = st.number_input("Screening temperature (K)", min_value=100, max_value=2000, value=1500, step=100)
     top_n = st.number_input("Top N", min_value=1, max_value=500, value=10, step=1)
 
