@@ -1,10 +1,11 @@
 {
-  "train_csv": "kappa_all4_F.csv",
+  "train_csv": "kappa_all6_F.csv",
   "composition_col": "Composition",
   "temp_col": "T",
   "target_col": "kappa",
   "features": [
     "T",
+    "MD_mass",
     "MagpieData minimum Number",
     "MagpieData maximum Number",
     "MagpieData range Number",
@@ -145,6 +146,7 @@
     "10-norm"
   ],
   "descriptor_features": [
+    "MD_mass",
     "MagpieData minimum Number",
     "MagpieData maximum Number",
     "MagpieData range Number",
@@ -284,8 +286,8 @@
     "7-norm",
     "10-norm"
   ],
-  "n_descriptor_features": 138,
-  "n_total_features": 139,
+  "n_descriptor_features": 139,
+  "n_total_features": 140,
   "random_state": 42,
   "test_size": 0.2,
   "monazite_markers": [
@@ -308,7 +310,7 @@
   ],
   "forced_train_pair": [
     "Lu0.2Yb0.2Er0.2Y0.2Gd0.2PO4",
-    "Lu0.25Yb0.25Er0.25Y0.25PO4"
+    "Sc0.2Lu0.2Yb0.2Y0.2Sm0.2PO4"
   ],
   "forced_train_compositions": [
     "LaPO4",
@@ -328,10 +330,10 @@
     "TmPO4",
     "TbPO4",
     "Lu0.2Yb0.2Er0.2Y0.2Gd0.2PO4",
-    "Lu0.25Yb0.25Er0.25Y0.25PO4"
+    "Sc0.2Lu0.2Yb0.2Y0.2Sm0.2PO4"
   ],
   "forced_test_compositions": [
-    "Sc0.2Lu0.2Yb0.2Y0.2Sm0.2PO4",
+    "Lu0.25Yb0.25Er0.25Y0.25PO4",
     "Sc0.2Lu0.2Yb0.2Y0.2Gd0.2PO4"
   ],
   "n_train_rows": 4231,
@@ -468,7 +470,6 @@
     "Lu0.25Sc0.75PO4",
     "Lu0.25Tm0.75PO4",
     "Lu0.25Y0.75PO4",
-    "Lu0.25Yb0.25Er0.25Y0.25PO4",
     "Lu0.25Yb0.75PO4",
     "Lu0.2Yb0.2Er0.2Y0.2Gd0.2PO4",
     "Lu0.3333Nd0.3333Y0.3333PO4",
@@ -507,6 +508,7 @@
     "PrPO4",
     "Sc0.25Tb0.75PO4",
     "Sc0.25Y0.75PO4",
+    "Sc0.2Lu0.2Yb0.2Y0.2Sm0.2PO4",
     "Sc0.3333Sm0.3333Tb0.3333PO4",
     "Sc0.3333Sm0.3333Yb0.3333PO4",
     "Sc0.3333Tb0.3333Yb0.3333PO4",
@@ -574,6 +576,7 @@
     "La0.25Tm0.75PO4",
     "La0.25Y0.75PO4",
     "Lu0.25Tb0.75PO4",
+    "Lu0.25Yb0.25Er0.25Y0.25PO4",
     "Lu0.3333Nd0.3333Sc0.3333PO4",
     "Lu0.3333Sm0.3333Y0.3333PO4",
     "Lu0.3333Tb0.3333Yb0.3333PO4",
@@ -585,7 +588,6 @@
     "Sc0.25Tm0.75PO4",
     "Sc0.25Yb0.75PO4",
     "Sc0.2Lu0.2Yb0.2Y0.2Gd0.2PO4",
-    "Sc0.2Lu0.2Yb0.2Y0.2Sm0.2PO4",
     "Sc0.3333Sm0.3333Y0.3333PO4",
     "Sc0.3333Tb0.3333Y0.3333PO4",
     "Sc0.5Y0.5PO4",
@@ -600,9 +602,9 @@
     "n_jobs": -1
   },
   "test_metrics": {
-    "R2": 0.9067426719174729,
-    "MAE": 0.5354306415257337,
-    "RMSE": 1.5984624027674608
+    "R2": 0.9221456030447543,
+    "MAE": 0.46552281180675426,
+    "RMSE": 1.4649897812610357
   },
   "featurization_done_in_script": false,
   "input_expected_to_be_pre_featurized": true
