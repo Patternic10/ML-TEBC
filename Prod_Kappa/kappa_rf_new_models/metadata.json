@@ -1,11 +1,10 @@
 {
-  "train_csv": "kappa_all6_F.csv",
+  "train_csv": "kappa_all7_F.csv",
   "composition_col": "Composition",
   "temp_col": "T",
   "target_col": "kappa",
   "features": [
     "T",
-    "MD_mass",
     "MagpieData minimum Number",
     "MagpieData maximum Number",
     "MagpieData range Number",
@@ -146,7 +145,6 @@
     "10-norm"
   ],
   "descriptor_features": [
-    "MD_mass",
     "MagpieData minimum Number",
     "MagpieData maximum Number",
     "MagpieData range Number",
@@ -286,8 +284,8 @@
     "7-norm",
     "10-norm"
   ],
-  "n_descriptor_features": 139,
-  "n_total_features": 140,
+  "n_descriptor_features": 138,
+  "n_total_features": 139,
   "random_state": 42,
   "test_size": 0.2,
   "monazite_markers": [
@@ -602,9 +600,9 @@
     "n_jobs": -1
   },
   "test_metrics": {
-    "R2": 0.9221456030447543,
-    "MAE": 0.46552281180675426,
-    "RMSE": 1.4649897812610357
+    "R2": 0.923554808183542,
+    "MAE": 0.4697069705729932,
+    "RMSE": 1.4516706963658674
   },
   "featurization_done_in_script": false,
   "input_expected_to_be_pre_featurized": true
